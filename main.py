@@ -1,4 +1,3 @@
-
 #-- Qt engine
 from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import *
@@ -9,6 +8,10 @@ from PyQt5.QtGui import *
 import sys
 import json
 import os
+import platform
+
+
+PLATFORM = platform.system()
 
 
 #-----
@@ -18,10 +21,23 @@ import os
 class Browser(QMainWindow):
     def __init__(self):
         super(Browser, self).__init__()
-        
+       
+        if PLATFORM == "Linux":
+            self.home_dir = os.path.expanduser("~")
+        elif PLATFORM == "Windows":
+            self.home_dir = os.path.dirname(os.path.abspath(__file__))
+      
+        # Startups
+        self.__generate_files()
+        self.__generate_paths()
+                
         self.__load_settings()
         self.__load_history()
         self.__load_bookmark()
+
+        # Tags
+        self.tags = ["open", "bookmark"]
+        self.cmds = ["q"]
 
         # Search bar vars
         self.activate_search = True
@@ -29,7 +45,8 @@ class Browser(QMainWindow):
         self.search_mode = "browse"
 
         # Setting up browser
-        self.home_page = "file://" + os.path.dirname(os.path.abspath(__file__)) + "/.config/" + self.settings["home"]
+        self.__generate_home_page()
+        print(self.home_page)
         self.browser = QWebEngineView()
         self.browser.setUrl(QUrl(self.home_page))
 
@@ -41,35 +58,93 @@ class Browser(QMainWindow):
         self.__add_shortcut()
 
     #----
-    # File Loaders
+    # Startup generations
     #----
 
-    def __load_settings(self):
-        with open(os.path.join(".config/config.json"), "r") as r:
-            self.settings = json.load(r)
+    def __generate_home_page(self):
+        if PLATFORM == "Windows":
+            path = "/.config/"
+        elif PLATFORM == "Linux":
+            path = "/.config/sbrowser/"
+ 
+        if ".html" in self.settings["home"]:
+            self.home_page = "file://" + self.home_dir + path + self.settings["home"]
+        else:
+            self.home_page = self.settings["home"]
 
+    def __generate_files(self):
+        # Generates .history and .bookmark files
+
+        if PLATFORM == "Windows":
+            if not os.path.exists(os.path.join(".config")):
+                os.mkdir(os.path.join(".config"))
+                
+            if not os.path.isfile(os.path.join(".config/.history")):
+                open(os.path.join(".config/.history"), "w")
+
+            if not os.path.isfile(os.path.join(".config/.bookmark")):
+                open(os.path.join(".config/.bookmark"), "w")
+        
+        elif PLATFORM == "Linux":
+            if not os.path.exists(f"{self.home_dir}/.config/sbrowser"):
+                os.mkdir(f"{self.home_dir}/.config/sbrowser")
+
+            if not os.path.isfile(f"{self.home_dir}/.config/sbrowser/.history"):
+                open(f"{self.home_dir}/.config/sbrowser/.history", "w")
+
+            if not os.path.isfile(f"{self.home_dir}/.config/sbrowser/.bookmark"):
+                open(f"{self.home_dir}/.config/sbrowser/.bookmark", "w")
+            
+
+    def __generate_paths(self):
+        if PLATFORM == "Windows":
+            self.history_path = os.path.join(".config/.history")
+            self.bookmark_path = os.path.join(".config/.bookmark")
+            self.settings_path = os.path.join("sbrowser_config.json")
+
+        elif PLATFORM == "Linux":
+            self.history_path = f"{self.home_dir}/.config/sbrowser/.history"
+            self.bookmark_path = f"{self.home_dir}/.config/sbrowser/.bookmark"
+            
+            if os.path.isfile(f"{self.home_dir}/.config/sbrowser/sbrowser_config.json"):
+                self.settings_path = f"{self.home_dir}/.config/sbrowser/sbrowser_config.json"
+            else:
+                self.settings_path = os.path.join("sbrowser_config.json")
+
+    #----
+    # File Loaders
+    #----
+    
+    # Settings loader
+    def __load_settings(self):
+        print(self.settings_path)
+        with open(self.settings_path, "r") as r:
+            self.settings = json.load(r)
+    
+    # History loader
     def __load_history(self):
-        with open(os.path.join(".config/.history"), "r") as r:
+        with open(self.history_path, "r") as r:
             data = r.readlines()
 
         self.history = []
         for i in data:
-            self.history.append(i.strip("\n"))
+            self.history.append("open " + i.strip("\n"))
         
     def __append_history(self, new_histroy):
-        with open(os.path.join(".config/.history"), "a") as a:
+        with open(self.history_path, "a") as a:
             a.write(new_histroy + "\n")
 
+    # Bookmarks loader
     def __load_bookmark(self):
-        with open(os.path.join(".config/.bookmark"), "r") as r:
+        with open(self.bookmark_path, "r") as r:
             data = r.readlines()
 
         self.bookmarks = []
         for i in data:
-            self.bookmarks.append(i.strip("\n"))
+            self.bookmarks.append("bookmark " + i.strip("\n"))
    
     def __append_bookmark(self, new_bookmark):
-        with open(os.path.join(".config/.bookmark"), "a") as a:
+        with open(self.bookmark_path, "a") as a:
             a.write(new_bookmark + "\n")
 
     #----
@@ -80,11 +155,18 @@ class Browser(QMainWindow):
         # All shortcut keys
 
         # To activate search bar
+
+        # Shows the browse history
         self.website_search = QShortcut(QKeySequence("o"), self)
         self.website_search.activated.connect(self.__search_website)
-
+        
+        # Shows the bookmarks
         self.bookmark_search = QShortcut(QKeySequence("b"), self)
         self.bookmark_search.activated.connect(self.__search_bookmark)
+
+        # Shows the cmds
+        self.cmd_search = QShortcut(QKeySequence(":"), self)
+        self.cmd_search.activated.connect(self.__search_cmd)
 
         self.close_search = QShortcut(QKeySequence("Escape"), self)
         self.close_search.activated.connect(self.__close_search_bar)
@@ -114,10 +196,20 @@ class Browser(QMainWindow):
     #----
 
     # Search bar
-    def __load_url(self):
+    def __exec_cmd(self):
         search = self.search_bar.text()
         
         if search:
+            # Extracting search data
+            tokens = search.split(" ")
+            
+            # Parsing the cmds
+            if tokens[0] in self.tags:
+                search = search.split(tokens[0])[1][1:]
+            elif tokens[0] == "q":
+                self.close()
+
+            # Searching in default search engine
             if "http" in search:
                 self.browser.load(QUrl(search))
             else:
@@ -125,18 +217,19 @@ class Browser(QMainWindow):
                 self.browser.load(QUrl(search))
             
             # Saving and reloading history
-            if search not in self.history:
+            if "open " + search not in self.history:
                 self.__append_history(search)
             self.__load_history()
         
         self.__close_search_bar()
 
     def __close_search_bar(self):
-        self.search_bar.clear()
-        self.nav_bar.removeAction(self.action)
-        self.removeToolBar(self.nav_bar)
+        if self.nav_bar:
+            self.search_bar.clear()
+            self.nav_bar.removeAction(self.action)
+            self.removeToolBar(self.nav_bar)
 
-    def __search(self, completer):
+    def __search(self, completer, pre_text):
         self.search_bar = QLineEdit()
         self.nav_bar = QToolBar()
         
@@ -148,28 +241,34 @@ class Browser(QMainWindow):
         # Adding auto completer
         self.completer = QCompleter(completer)
         self.search_bar.setCompleter(self.completer)
+        self.search_bar.setText(pre_text)
         
         # Setting the dimension of the completer
         if completer:
-            rect = QRect(0, -64, self.size().width(), 100)
+            rect = QRect(4, -66, self.size().width() - 9, 100)
             self.completer.complete(rect)
             self.completer.popup().show()
 
         # Adding focus
         self.search_bar.setFocus()
-        self.search_bar.returnPressed.connect(self.__load_url)
-
+        self.search_bar.returnPressed.connect(self.__exec_cmd)
+    
+    # Different search alternatives
     def __search_website(self):
-        self.__search(self.history)
+        self.__search(self.history, "open ")
     
     def __search_bookmark(self):
-        self.__search(self.bookmarks)
+        self.__search(self.bookmarks, "bookmark ")
+    
+    def __search_cmd(self):
+        all_completion = self.cmds + self.bookmarks + self.history
+        self.__search(all_completion, "")
 
     # Bookmark
     def __bookmark(self):
         bookmark = self.browser.url().toString()
 
-        if bookmark not in self.bookmarks:
+        if "bookmark " + bookmark not in self.bookmarks:
             self.__append_bookmark(bookmark)
         self.__load_bookmark()
 
