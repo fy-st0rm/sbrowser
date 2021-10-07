@@ -14,6 +14,11 @@ import platform
 PLATFORM = platform.system()
 
 
+#TODO:
+#   Delete history
+#   Delete bookmarks
+#   Tabs
+
 #-----
 # Browser app
 #----
@@ -21,7 +26,8 @@ PLATFORM = platform.system()
 class Browser(QMainWindow):
     def __init__(self):
         super(Browser, self).__init__()
-       
+        
+        # Plaform specific stuff
         if PLATFORM == "Linux":
             self.home_dir = os.path.expanduser("~")
         elif PLATFORM == "Windows":
@@ -36,8 +42,8 @@ class Browser(QMainWindow):
         self.__load_bookmark()
 
         # Tags
-        self.tags = ["open", "bookmark"]
-        self.cmds = ["q"]
+        self.tags = [":open", ":bookmark"]
+        self.cmds = [":q"]
 
         # Search bar vars
         self.activate_search = True
@@ -128,7 +134,7 @@ class Browser(QMainWindow):
 
         self.history = []
         for i in data:
-            self.history.append("open " + i.strip("\n"))
+            self.history.append(":open " + i.strip("\n"))
         
     def __append_history(self, new_histroy):
         with open(self.history_path, "a") as a:
@@ -141,7 +147,7 @@ class Browser(QMainWindow):
 
         self.bookmarks = []
         for i in data:
-            self.bookmarks.append("bookmark " + i.strip("\n"))
+            self.bookmarks.append(":bookmark " + i.strip("\n"))
    
     def __append_bookmark(self, new_bookmark):
         with open(self.bookmark_path, "a") as a:
@@ -153,18 +159,8 @@ class Browser(QMainWindow):
 
     def __add_shortcut(self):
         # All shortcut keys
-
-        # To activate search bar
-
-        # Shows the browse history
-        self.website_search = QShortcut(QKeySequence("o"), self)
-        self.website_search.activated.connect(self.__search_website)
         
-        # Shows the bookmarks
-        self.bookmark_search = QShortcut(QKeySequence("b"), self)
-        self.bookmark_search.activated.connect(self.__search_bookmark)
-
-        # Shows the cmds
+        # Enables cmd entry
         self.cmd_search = QShortcut(QKeySequence(":"), self)
         self.cmd_search.activated.connect(self.__search_cmd)
 
@@ -206,7 +202,7 @@ class Browser(QMainWindow):
             # Parsing the cmds
             if tokens[0] in self.tags:
                 search = search.split(tokens[0])[1][1:]
-            elif tokens[0] == "q":
+            elif tokens[0] == ":q":
                 self.close()
 
             # Searching in default search engine
@@ -236,29 +232,16 @@ class Browser(QMainWindow):
         # Adding search bar
         self.search_bar.setFocusPolicy(Qt.StrongFocus)
         self.action = self.nav_bar.addWidget(self.search_bar)
-        self.addToolBar(self.nav_bar)
+        self.addToolBar(Qt.BottomToolBarArea, self.nav_bar)
         
         # Adding auto completer
         self.completer = QCompleter(completer)
         self.search_bar.setCompleter(self.completer)
         self.search_bar.setText(pre_text)
-        
-        # Setting the dimension of the completer
-        if completer:
-            rect = QRect(4, -66, self.size().width() - 9, 100)
-            self.completer.complete(rect)
-            self.completer.popup().show()
 
         # Adding focus
         self.search_bar.setFocus()
         self.search_bar.returnPressed.connect(self.__exec_cmd)
-    
-    # Different search alternatives
-    def __search_website(self):
-        self.__search(self.history, "open ")
-    
-    def __search_bookmark(self):
-        self.__search(self.bookmarks, "bookmark ")
     
     def __search_cmd(self):
         all_completion = self.cmds + self.bookmarks + self.history
