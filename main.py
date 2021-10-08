@@ -21,7 +21,7 @@ PLATFORM = platform.system()
 class Browser(QMainWindow):
     def __init__(self):
         super(Browser, self).__init__()
-        
+         
         # Plaform specific stuff
         if PLATFORM == "Linux":
             self.home_dir = os.path.expanduser("~")
@@ -35,6 +35,7 @@ class Browser(QMainWindow):
         self.__load_settings()
         self.__load_history()
         self.__load_bookmark()
+        self.__load_colors()
 
         # Tags
         self.tags = [":open", ":bookmark"]
@@ -48,7 +49,22 @@ class Browser(QMainWindow):
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.tabCloseRequested.connect(self.__kill_tab)
-        self.tab_widget.setStyleSheet("QTabWidget::pane { border: 0; } QTabBar::tab { height: 10px; width: 100px; }");
+        self.tab_widget.setStyleSheet("""QTabWidget::pane 
+                                        { 
+                                            border: 0; 
+                                        } 
+                                        QTabBar::tab 
+                                        { 
+                                            height: 20px; 
+                                            background-color: """ + f"rgb({self.tab_bg[0]}, {self.tab_bg[1]}, {self.tab_bg[2]});" + """
+                                            color: white; 
+                                        }
+                                        QTabBar::tab:selected 
+                                        {
+                                            background-color:""" + f"rgb({self.tab_bg[0]}, {self.tab_bg[1] + 20}, {self.tab_bg[2] + 20});" + """
+                                        }"""
+                                        );
+        self.tab_widget.setPalette(self.palette)
         self.tabs = []
 
         # Setting up browser
@@ -118,6 +134,21 @@ class Browser(QMainWindow):
     #----
     # File Loaders
     #----
+
+    # Color palette loader
+    def __load_colors(self):
+        self.palette = QPalette()
+        
+        self.window = self.settings["window"]
+        self.entry_bg = self.settings["entry_bg"]
+        self.entry_text = self.settings["entry_text"]
+        self.tab_bg = self.settings["tab_bg"]
+
+        self.palette.setColor(QPalette.Window, QColor(self.window[0], self.window[1], self.window[2]))
+        self.palette.setColor(QPalette.Base, QColor(self.entry_bg[0], self.entry_bg[1], self.entry_bg[2]))
+        self.palette.setColor(QPalette.Text, QColor(self.entry_text[0], self.entry_text[1], self.entry_text[2]))
+        
+        app.setPalette(self.palette)
     
     # Settings loader
     def __load_settings(self):
@@ -229,8 +260,11 @@ class Browser(QMainWindow):
     #----
 
     def __generate_new_tab(self):
+        # Creating a new browser instance
         self.browser = QWebEngineView()
         self.browser.setUrl(QUrl(self.home_page))
+        
+        # Adding it to the tabs
         self.tabs.append(self.browser)
 
         self.tab_widget.addTab(self.browser, "New Tab")
@@ -301,10 +335,14 @@ class Browser(QMainWindow):
 
     def __search(self, completer, pre_text):
         self.search_bar = QLineEdit()
+        self.search_bar.setPalette(self.palette)
+
         self.nav_bar = QToolBar()
+        self.nav_bar.setStyleSheet("QToolBar {border: 0;}")
         
         # Adding search bar
         self.search_bar.setFocusPolicy(Qt.StrongFocus)
+
         self.action = self.nav_bar.addWidget(self.search_bar)
         self.addToolBar(Qt.BottomToolBarArea, self.nav_bar)
         
@@ -358,6 +396,9 @@ class Browser(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+     
+    if PLATFORM == "Linux":
+        app.setStyle("Fusion")
     QApplication.setApplicationName("Browser")
 
     browser = Browser()

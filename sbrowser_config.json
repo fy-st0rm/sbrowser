@@ -1,4 +1,9 @@
 {
 	"home": "home_page.html",
-	"search_engine": "https://google.com"
+	"search_engine": "https://google.com",
+
+	"window": [40, 42, 54],
+	"entry_bg": [68, 71, 90],
+	"entry_text": [0, 0, 0],
+	"tab_bg": [68, 71, 90]
 }
