@@ -48,21 +48,25 @@ class Browser(QMainWindow):
         # Search bar vars
         self.activate_search = True
         self.nav_bar = None
-        self.search_mode = "browse"
+
+        # Tab
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setTabsClosable(True)
+        self.tab_widget.tabCloseRequested.connect(self.__kill_tab)
+        self.tab_widget.setStyleSheet("QTabWidget::pane { border: 0; } QTabBar::tab { height: 10px; width: 100px; }");
+        self.tabs = []
 
         # Setting up browser
         self.__generate_home_page()
-        print(self.home_page)
-        self.browser = QWebEngineView()
-        self.browser.setUrl(QUrl(self.home_page))
+        self.__generate_new_tab()
 
         # App stuff
-        self.setCentralWidget(self.browser)
+        self.setCentralWidget(self.tab_widget)
         self.showMaximized()
 
         # Add shortcuts
         self.__add_shortcut()
-
+    
     #----
     # Startup generations
     #----
@@ -99,8 +103,7 @@ class Browser(QMainWindow):
                 open(f"{self.home_dir}/.config/sbrowser/.history", "w")
 
             if not os.path.isfile(f"{self.home_dir}/.config/sbrowser/.bookmark"):
-                open(f"{self.home_dir}/.config/sbrowser/.bookmark", "w")
-            
+                open(f"{self.home_dir}/.config/sbrowser/.bookmark", "w") 
 
     def __generate_paths(self):
         if PLATFORM == "Windows":
@@ -166,6 +169,8 @@ class Browser(QMainWindow):
 
         self.close_search = QShortcut(QKeySequence("Escape"), self)
         self.close_search.activated.connect(self.__close_search_bar)
+        
+        #-- Webpage util
 
         # To add bookmark
         self.add_book_mark = QShortcut(QKeySequence("Ctrl+b"), self)
@@ -176,17 +181,62 @@ class Browser(QMainWindow):
         self.refresh.activated.connect(self.__refresh)
 
         # To go to prev page
-        self.prev = QShortcut(QKeySequence("Ctrl+left"), self)
+        self.prev = QShortcut(QKeySequence("Ctrl+p"), self)
         self.prev.activated.connect(self.__back)
 
         # To go forward
-        self.forward = QShortcut(QKeySequence("Ctrl+right"), self)
+        self.forward = QShortcut(QKeySequence("Ctrl+f"), self)
         self.forward.activated.connect(self.__forward)
 
         # To go to home
         self.home = QShortcut(QKeySequence("Ctrl+h"), self)
         self.home.activated.connect(self.__home)
- 
+
+        #-- Tabs
+
+        # To generate new tab
+        self.new_tab = QShortcut(QKeySequence("Ctrl+t"), self)
+        self.new_tab.activated.connect(self.__generate_new_tab)
+
+        # To kill tabs
+        self.kill_tab = QShortcut(QKeySequence("Ctrl+w"), self)
+        self.kill_tab.activated.connect(self.__kill_tab)
+
+        # Tabs movement
+        self.move_left = QShortcut(QKeySequence("Ctrl+left"), self)
+        self.move_left.activated.connect(self.__tab_left)
+
+        self.move_right = QShortcut(QKeySequence("Ctrl+right"), self)
+        self.move_right.activated.connect(self.__tab_right)
+    #----
+    # Tabs
+    #----
+
+    def __generate_new_tab(self):
+        self.browser = QWebEngineView()
+        self.browser.setUrl(QUrl(self.home_page))
+        self.tabs.append(self.browser)
+
+        self.tab_widget.addTab(self.browser, "Tab")
+   
+    def __kill_tab(self, junk = None):
+        index = self.tab_widget.currentIndex()
+        self.tabs.pop(index)
+        self.tab_widget.removeTab(index)
+
+        if len(self.tabs) == 0:
+            self.__generate_new_tab()
+
+    def __tab_left(self):
+        index = self.tab_widget.currentIndex()
+        if index > 0:
+            self.tab_widget.setCurrentIndex(index - 1)
+    
+    def __tab_right(self):
+        index = self.tab_widget.currentIndex()
+        if index < len(self.tabs):
+            self.tab_widget.setCurrentIndex(index + 1)
+
     #----
     # Cmds refrences
     #----
@@ -202,15 +252,16 @@ class Browser(QMainWindow):
             # Parsing the cmds
             if tokens[0] in self.tags:
                 search = search.split(tokens[0])[1][1:]
+
             elif tokens[0] == ":q":
                 self.close()
 
             # Searching in default search engine
             if "http" in search:
-                self.browser.load(QUrl(search))
+                self.tabs[self.tab_widget.currentIndex()].load(QUrl(search))
             else:
                 search = self.settings["search_engine"] + "/search?q=" + search
-                self.browser.load(QUrl(search))
+                self.tabs[self.tab_widget.currentIndex()].load(QUrl(search))
             
             # Saving and reloading history
             if "open " + search not in self.history:
@@ -249,7 +300,7 @@ class Browser(QMainWindow):
 
     # Bookmark
     def __bookmark(self):
-        bookmark = self.browser.url().toString()
+        bookmark = self.tabs[self.tab_widget.currentIndex()].url().toString()
 
         if "bookmark " + bookmark not in self.bookmarks:
             self.__append_bookmark(bookmark)
@@ -257,20 +308,20 @@ class Browser(QMainWindow):
 
     # Refresh 
     def __refresh(self):
-        self.browser.reload()
+        self.tabs[self.tab_widget.currentIndex()].reload()
         self.__load_settings()
 
     # Back
     def __back(self):
-        self.browser.back()
+        self.tabs[self.tab_widget.currentIndex()].back()
 
     # Forward
     def __forward(self):
-        self.browser.forward()
+        self.tabs[self.tab_widget.currentIndex()].forward()
 
     # Home
     def __home(self):
-        self.browser.setUrl(QUrl(self.home_page))
+        self.tabs[self.tab_widget.currentIndex()].setUrl(QUrl(self.home_page))
 
 
 if __name__ == "__main__":
