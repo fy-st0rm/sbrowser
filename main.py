@@ -14,11 +14,6 @@ import platform
 PLATFORM = platform.system()
 
 
-#TODO:
-#   Delete history
-#   Delete bookmarks
-#   Tabs
-
 #-----
 # Browser app
 #----
@@ -43,7 +38,7 @@ class Browser(QMainWindow):
 
         # Tags
         self.tags = [":open", ":bookmark"]
-        self.cmds = [":q"]
+        self.cmds = [":cmd q", ":cmd clear_history"]
 
         # Search bar vars
         self.activate_search = True
@@ -156,6 +151,22 @@ class Browser(QMainWindow):
         with open(self.bookmark_path, "a") as a:
             a.write(new_bookmark + "\n")
 
+    def __remove_bookmark(self, to_remove):
+        self.bookmarks.remove(":bookmark " + to_remove)
+            
+        # Getting the bookmarks to resave
+        to_save = []
+        for i in self.bookmarks:
+            to_save.append(i.split(":bookmark")[1] + "\n")
+        
+        # Saving the bookmarks
+        with open(self.bookmark_path, "w") as w:
+            for i in to_save:
+                w.write(i)
+        
+        # Reloading the bookmarks
+        self.__load_bookmark()
+
     #----
     # Key handlers
     #----
@@ -171,6 +182,10 @@ class Browser(QMainWindow):
         self.close_search.activated.connect(self.__close_search_bar)
         
         #-- Webpage util
+        
+        # To clear history
+        self.clear_history = QShortcut(QKeySequence("Shift+h"), self)
+        self.clear_history.activated.connect(self.__clear_history)
 
         # To add bookmark
         self.add_book_mark = QShortcut(QKeySequence("Ctrl+b"), self)
@@ -208,6 +223,7 @@ class Browser(QMainWindow):
 
         self.move_right = QShortcut(QKeySequence("Ctrl+right"), self)
         self.move_right.activated.connect(self.__tab_right)
+
     #----
     # Tabs
     #----
@@ -217,7 +233,7 @@ class Browser(QMainWindow):
         self.browser.setUrl(QUrl(self.home_page))
         self.tabs.append(self.browser)
 
-        self.tab_widget.addTab(self.browser, "Tab")
+        self.tab_widget.addTab(self.browser, "New Tab")
    
     def __kill_tab(self, junk = None):
         index = self.tab_widget.currentIndex()
@@ -246,27 +262,34 @@ class Browser(QMainWindow):
         search = self.search_bar.text()
         
         if search:
-            # Extracting search data
-            tokens = search.split(" ")
-            
             # Parsing the cmds
-            if tokens[0] in self.tags:
-                search = search.split(tokens[0])[1][1:]
-
-            elif tokens[0] == ":q":
+            if search == ":q" or search == ":cmd q":
                 self.close()
 
-            # Searching in default search engine
-            if "http" in search:
-                self.tabs[self.tab_widget.currentIndex()].load(QUrl(search))
-            else:
-                search = self.settings["search_engine"] + "/search?q=" + search
-                self.tabs[self.tab_widget.currentIndex()].load(QUrl(search))
-            
-            # Saving and reloading history
-            if "open " + search not in self.history:
-                self.__append_history(search)
-            self.__load_history()
+            elif search == ":ch" or search == ":cmd clear_history":
+                self.__clear_history()
+             
+            else: 
+                # Extracting search data
+                tokens = search.split(" ")
+                
+                if tokens[0] in self.tags:
+                    search = search.split(tokens[0])[1][1:]
+
+                # Searching in default search engine
+                if "http" in search:
+                    self.tabs[self.tab_widget.currentIndex()].load(QUrl(search))
+                else:
+                    search = self.settings["search_engine"] + "/search?q=" + search
+                    self.tabs[self.tab_widget.currentIndex()].load(QUrl(search))
+                
+                # Changing the tab name
+                self.tab_widget.setTabText(self.tab_widget.currentIndex(), search)
+                
+                # Saving and reloading history
+                if ":open " + search not in self.history:
+                    self.__append_history(search)
+                self.__load_history()
         
         self.__close_search_bar()
 
@@ -296,15 +319,24 @@ class Browser(QMainWindow):
     
     def __search_cmd(self):
         all_completion = self.cmds + self.bookmarks + self.history
-        self.__search(all_completion, "")
+        self.__search(all_completion, ":")
 
     # Bookmark
     def __bookmark(self):
         bookmark = self.tabs[self.tab_widget.currentIndex()].url().toString()
 
-        if "bookmark " + bookmark not in self.bookmarks:
+        if ":bookmark " + bookmark not in self.bookmarks:
             self.__append_bookmark(bookmark)
+        else:
+            self.__remove_bookmark(bookmark)
         self.__load_bookmark()
+
+    # History
+    def __clear_history(self):
+        with open(self.history_path, "w") as w:
+            w.write("")
+            
+        self.__load_history()
 
     # Refresh 
     def __refresh(self):
