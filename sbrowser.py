@@ -42,7 +42,7 @@ class Browser(QMainWindow):
 
         # Tags
         self.tags = [":open", ":bookmark"]
-        self.cmds = [":cmd q", ":cmd clear_history"]
+        self.cmds = [":cmd q", ":cmd clear_history", ":cmd new_tab"]
 
         # Search bar vars
         self.activate_search = True
@@ -272,10 +272,15 @@ class Browser(QMainWindow):
 
         self.tab_widget.addTab(self.browser, "New Tab")
    
-    def __kill_tab(self, junk = None):
-        index = self.tab_widget.currentIndex()
-        self.tabs.pop(index)
-        self.tab_widget.removeTab(index)
+    def __kill_tab(self, index = None):
+        if index is not None:
+            self.tabs.pop(index)
+            self.tab_widget.removeTab(index)
+        else:
+            index = self.tab_widget.currentIndex()
+            self.tabs[index].close()
+            self.tabs.pop(index)
+            self.tab_widget.removeTab(index)
 
         if len(self.tabs) == 0:
             self.__generate_new_tab()
@@ -303,8 +308,11 @@ class Browser(QMainWindow):
             if search == ":q" or search == ":cmd q":
                 self.close()
 
-            elif search == ":ch" or search == ":cmd clear_history":
+            elif search == ":clear_history" or search == ":cmd clear_history":
                 self.__clear_history()
+
+            elif search == ":new_tab" or search == ":cmd new_tab":
+                self.__generate_new_tab()
              
             else: 
                 # Extracting search data
