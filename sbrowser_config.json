@@ -1,9 +1,9 @@
 {
 	"home": "home_page.html",
-	"search_engine": "https://google.com",
-
+	"search_engine": "https://www.google.com",
+	"download_dir": "Downloads/",
 	"window": [40, 42, 54],
 	"entry_bg": [68, 71, 90],
-	"entry_text": [0, 0, 0],
+	"entry_text": [255, 255, 255],
 	"tab_bg": [68, 71, 90]
 }

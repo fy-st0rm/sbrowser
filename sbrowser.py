@@ -11,7 +11,7 @@ from PyQt5.QtGui import *
 import sys
 import json
 import platform
-
+import clipboard
 
 PLATFORM = platform.system()
 
@@ -248,6 +248,10 @@ class Browser(QMainWindow):
         self.home = QShortcut(QKeySequence("Ctrl+h"), self)
         self.home.activated.connect(self.__home)
 
+        # To copy link
+        self.copy_link = QShortcut(QKeySequence("Ctrl+l"), self)
+        self.copy_link.activated.connect(self.__copy_link)
+
         #-- Tabs
 
         # To generate new tab
@@ -266,6 +270,16 @@ class Browser(QMainWindow):
         self.move_right.activated.connect(self.__tab_right)
 
     #----
+    # Requests
+    #----
+
+    def __download_request(self, item):
+        print("Downloading: " + item.downloadFileName() + " to " + self.settings["download_dir"])
+
+        item.setPath(self.home_dir + "/" + self.settings["download_dir"] + item.downloadFileName())
+        item.accept()
+
+    #----
     # Tabs
     #----
 
@@ -275,6 +289,7 @@ class Browser(QMainWindow):
         self.browser.setUrl(QUrl(self.home_page))
         self.browser.settings().setAttribute(QWebEngineSettings.FullScreenSupportEnabled, True)
         self.browser.page().fullScreenRequested.connect(lambda request: request.accept())
+        self.browser.page().profile().downloadRequested.connect(self.__download_request)
 
         # Adding it to the tabs
         self.tabs.append(self.browser)
@@ -408,6 +423,11 @@ class Browser(QMainWindow):
             
         self.__load_history()
 
+    # Link
+    def __copy_link(self):
+        url = self.tabs[self.tab_widget.currentIndex()].url().toString()
+        clipboard.copy(url)
+
     # Refresh 
     def __refresh(self):
         self.tabs[self.tab_widget.currentIndex()].reload()
@@ -432,7 +452,7 @@ if __name__ == "__main__":
     if PLATFORM == "Linux":
         app.setStyle("Fusion")
     QApplication.setApplicationName("Browser")
-
+    
     browser = Browser()
     app.exec_()
 
