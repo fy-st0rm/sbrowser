@@ -263,7 +263,7 @@ class Browser(QMainWindow):
     #----
 
     def __generate_new_tab(self):
-        # Creating a new browser instance
+        # Creating a new browser instanc
         self.browser = QWebEngineView()
         self.browser.setUrl(QUrl(self.home_page))
         
@@ -274,6 +274,7 @@ class Browser(QMainWindow):
    
     def __kill_tab(self, index = None):
         if index is not None:
+            self.tabs[index].close()
             self.tabs.pop(index)
             self.tab_widget.removeTab(index)
         else:
