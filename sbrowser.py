@@ -10,7 +10,6 @@ from PyQt5.QtGui import *
 #-- Utils import
 import sys
 import json
-import os
 import platform
 
 
@@ -208,6 +207,14 @@ class Browser(QMainWindow):
     def __add_shortcut(self):
         # All shortcut keys
         
+        # Enables search entry
+        self.open_search = QShortcut(QKeySequence("o"), self)
+        self.open_search.activated.connect(self.__search_open)
+
+        # Enables bookmark entry
+        self.bookmark_search = QShortcut(QKeySequence("b"), self)
+        self.bookmark_search.activated.connect(self.__search_bookmark)
+
         # Enables cmd entry
         self.cmd_search = QShortcut(QKeySequence(":"), self)
         self.cmd_search.activated.connect(self.__search_cmd)
@@ -368,6 +375,14 @@ class Browser(QMainWindow):
         self.search_bar.setFocus()
         self.search_bar.returnPressed.connect(self.__exec_cmd)
     
+    def __search_open(self):
+        all_completion = self.cmds + self.bookmarks + self.history
+        self.__search(all_completion, ":open")
+
+    def __search_bookmark(self):
+        all_completion = self.cmds + self.bookmarks + self.history
+        self.__search(all_completion, ":bookmark")
+
     def __search_cmd(self):
         all_completion = self.cmds + self.bookmarks + self.history
         self.__search(all_completion, ":")
@@ -405,7 +420,7 @@ class Browser(QMainWindow):
     # Home
     def __home(self):
         self.tabs[self.tab_widget.currentIndex()].setUrl(QUrl(self.home_page))
-
+        self.tab_widget.setTabText(self.tab_widget.currentIndex(), "New Tab")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
