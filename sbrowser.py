@@ -275,10 +275,14 @@ class Browser(QMainWindow):
         self.browser.setUrl(QUrl(self.home_page))
         self.browser.settings().setAttribute(QWebEngineSettings.FullScreenSupportEnabled, True)
         self.browser.page().fullScreenRequested.connect(lambda request: request.accept())
+
         # Adding it to the tabs
         self.tabs.append(self.browser)
 
         self.tab_widget.addTab(self.browser, "New Tab")
+
+        # Changing the focus to the new tab
+        self.tab_widget.setCurrentIndex(len(self.tabs) - 1)
    
     def __kill_tab(self, index = None):
         if index is not None:
