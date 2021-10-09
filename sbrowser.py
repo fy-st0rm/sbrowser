@@ -1,3 +1,6 @@
+import os
+os.environ["QTWEBENGINEPROCESS_PATH"] = "/usr/lib/qt/libexec/QtWebEngineProcess"
+
 #-- Qt engine
 from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import *
