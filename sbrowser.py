@@ -266,7 +266,8 @@ class Browser(QMainWindow):
         # Creating a new browser instanc
         self.browser = QWebEngineView()
         self.browser.setUrl(QUrl(self.home_page))
-        
+        self.browser.settings().setAttribute(QWebEngineSettings.FullScreenSupportEnabled, True)
+        self.browser.page().fullScreenRequested.connect(lambda request: request.accept())
         # Adding it to the tabs
         self.tabs.append(self.browser)
 
